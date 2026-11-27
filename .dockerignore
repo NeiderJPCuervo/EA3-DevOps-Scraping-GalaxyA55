@@ -1,0 +1,11 @@
+# Solo se envía al build lo que copia el Dockerfile
+*
+!requirements-app.txt
+!app/
+!scraping/config.py
+!scraping/06_sitio.py
+!data/resumen.json
+!data/a55_limpio.csv
+!data/metricas_selenium.json
+!figuras/
+**/__pycache__
