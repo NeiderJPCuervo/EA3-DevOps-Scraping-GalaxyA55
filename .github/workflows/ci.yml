@@ -1,6 +1,7 @@
 # Integración continua: cada cambio que llega a main o a un pull request se
-# valida con lint, pruebas automatizadas y una ejecución completa del pipeline
-# de datos sobre el HTML capturado por Selenium (sin peticiones a Mercado Libre).
+# valida con lint, pruebas automatizadas, una ejecución completa del pipeline
+# de datos sobre el HTML capturado por Selenium (sin peticiones a Mercado Libre)
+# y la construcción y prueba de la imagen Docker de la app web.
 name: CI
 
 on:
@@ -85,12 +86,61 @@ jobs:
             reporte-pruebas.xml
           retention-days: 14
 
+  # La misma imagen que se despliega en Render se construye y se prueba aquí
+  docker:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      IMAGEN: ea3-galaxy-a55:${{ github.sha }}
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Construir la imagen
+        run: docker build -t "$IMAGEN" .
+
+      - name: Levantar el contenedor
+        run: docker run -d --name app -p 8000:8000 -e RENDER_GIT_COMMIT=${{ github.sha }} "$IMAGEN"
+
+      - name: Smoke test de la app
+        run: |
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/salud && break; sleep 1; done
+          echo
+          curl -fsS http://127.0.0.1:8000/salud | grep -q '"commit":"${{ github.sha }}"'
+          curl -fsS http://127.0.0.1:8000/api/resumen | grep -q '"publicaciones_a55":30'
+          curl -fsS "http://127.0.0.1:8000/api/publicaciones?condicion=Nuevo&limite=1" | grep -q '"condicion":"Nuevo"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/publicaciones/MCO000)" = 404
+          curl -fsS http://127.0.0.1:8000/ | grep -q "Publicaciones del Galaxy A55"
+          curl -fsS -o /dev/null http://127.0.0.1:8000/figuras/fig1_histograma_precios.png
+
+      - name: Esperar el HEALTHCHECK de Docker
+        run: |
+          for i in $(seq 1 20); do
+            estado=$(docker inspect --format '{{.State.Health.Status}}' app)
+            echo "health: $estado"
+            [ "$estado" = healthy ] && exit 0
+            sleep 3
+          done
+          exit 1
+
+      - name: Publicar el tamaño de la imagen
+        run: |
+          echo "### Imagen Docker" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$IMAGEN\` · $(docker image inspect "$IMAGEN" --format '{{.Size}}' | numfmt --to=iec) · smoke test OK" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Registros del contenedor
+        if: always()
+        run: docker logs app
+
   # Check único que exige la protección de la rama main
   ci:
     name: ci
-    needs: pruebas
+    needs: [pruebas, docker]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar que todas las pruebas pasaron
-        run: test "${{ needs.pruebas.result }}" = "success"
+      - name: Verificar que las pruebas y la imagen pasaron
+        run: |
+          test "${{ needs.pruebas.result }}" = "success"
+          test "${{ needs.docker.result }}" = "success"
