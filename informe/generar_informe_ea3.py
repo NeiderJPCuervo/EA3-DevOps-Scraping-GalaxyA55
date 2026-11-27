@@ -795,11 +795,11 @@ def resultados(doc, D, R, M, fig_ejec):
            "los agrupa.", ancho=14.5)
 
     doc.add_heading("6.3 Despliegue continuo verificado", 2)
-    parrafo(doc, f"El ciclo completo se probó con el merge del PR #9. El CI pasó en main, Render registró el evento "
-            f"«New commit via Auto-Deploy», construyó la imagen y la puso en línea en alrededor de un minuto, y el "
-            f"workflow Deploy Render confirmó en su tercer intento que /salud ya reportaba el commit "
-            f"{prod['salud']['commit'][:7]}. Desde el merge hasta la producción verificada pasaron "
-            f"{duracion(M['merge_a_prod_s'])}, sin ninguna intervención manual.")
+    parrafo(doc, "Desde que configuré Render, cada merge a main recorrió el ciclo completo sin intervención "
+            "manual. El CI pasó en main, Render registró el evento «New commit via Auto-Deploy», construyó la imagen "
+            "y la puso en línea en alrededor de un minuto, y el workflow Deploy Render confirmó que /salud ya "
+            f"reportaba el commit nuevo. En el último merge (commit {D['main']}) pasaron "
+            f"{duracion(M['merge_a_prod_s'])} desde el inicio del CI en main hasta la producción verificada.")
     tabla(doc, "Eventos de despliegue en Render", ["Commit", "Evento", "Inicio", "En línea"],
           [(e["commit"], e["evento"], e["inicio"], e["en_linea"]) for e in D["eventos_render"]],
           anchos=[2.2, 9.0, 2.4, 2.4],
