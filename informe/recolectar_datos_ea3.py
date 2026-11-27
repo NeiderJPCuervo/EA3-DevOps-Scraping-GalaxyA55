@@ -30,8 +30,10 @@ SALIDA = RAIZ / "informe" / "datos_ea3.json"
 EVENTOS_RENDER = [
     {"commit": "e00944c", "evento": "Primer despliegue (creación del Blueprint)",
      "inicio": "09:52", "en_linea": "09:53"},
-    {"commit": "5392895", "evento": "Despliegue automático tras el CI (New commit via Auto-Deploy)",
+    {"commit": "5392895", "evento": "Despliegue automático tras el CI del PR #9 (New commit via Auto-Deploy)",
      "inicio": "09:56", "en_linea": "09:57"},
+    {"commit": "1447020", "evento": "Despliegue automático tras el CI del PR #12 (New commit via Auto-Deploy)",
+     "inicio": "10:12", "en_linea": "10:13"},
 ]
 
 
