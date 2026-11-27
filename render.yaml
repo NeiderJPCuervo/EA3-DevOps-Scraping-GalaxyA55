@@ -1,6 +1,7 @@
 # Blueprint de Render: la app web de la EA3 como servicio Docker.
-# El despliegue automático de Render está desactivado: solo despliega el workflow
-# deploy-render.yml, y solo con commits de main que ya pasaron CI.
+# Render solo despliega un commit de main cuando sus checks de GitHub Actions
+# (CI: pruebas + imagen Docker) terminaron en verde (autoDeployTrigger: checksPass).
+# El workflow deploy-render.yml verifica después que producción sirva ese commit.
 services:
   - type: web
     name: ea3-galaxy-a55
@@ -9,7 +10,7 @@ services:
     branch: main
     dockerfilePath: ./Dockerfile
     healthCheckPath: /salud
-    autoDeploy: false
+    autoDeployTrigger: checksPass
     envVars:
       - key: APP_ENV
         value: produccion
