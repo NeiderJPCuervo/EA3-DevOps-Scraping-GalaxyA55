@@ -5,7 +5,7 @@
 !scraping/config.py
 !scraping/06_sitio.py
 !data/resumen.json
-!data/a55_limpio.csv
+# !data/a55_limpio.csv   (demo: se excluye a propósito)
 !data/metricas_selenium.json
 !figuras/
 **/__pycache__

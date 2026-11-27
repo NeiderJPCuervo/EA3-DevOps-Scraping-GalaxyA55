@@ -18,7 +18,7 @@ RUN pip install -r requirements-app.txt
 RUN useradd --create-home --uid 10001 app
 COPY app/ app/
 COPY scraping/config.py scraping/06_sitio.py scraping/
-COPY data/resumen.json data/a55_limpio.csv data/metricas_selenium.json data/
+COPY data/resumen.json data/metricas_selenium.json data/
 COPY figuras/ figuras/
 # config.py crea data/raw al importarse: se deja lista y con dueño "app"
 RUN mkdir -p data/raw && chown -R app:app /srv
