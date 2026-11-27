@@ -20,3 +20,7 @@ tmp/
 
 # Datos recolectados para el informe (se regeneran)
 informe/datos.json
+
+# Datos y notebook generados para la entrega de la EA3 (se regeneran)
+informe/datos_ea3.json
+informe/Cuervo_Quintero_John_Actividad_EA3.ipynb
