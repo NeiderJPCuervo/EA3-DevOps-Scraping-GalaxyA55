@@ -1,0 +1,91 @@
+# Despliegue continuo a Render: cuando CI termina con éxito sobre main se llama
+# al Deploy Hook de Render con el commit validado y se espera a que producción
+# lo reporte en /salud. Después se hace un smoke test de la API en producción.
+name: Deploy Render
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: Desplegar en Render
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: produccion
+      url: ${{ vars.RENDER_URL }}
+    env:
+      # El commit que CI validó, no el último de main en este momento
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      RENDER_URL: ${{ vars.RENDER_URL }}
+      HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    steps:
+      - name: Comprobar la configuración de Render
+        id: config
+        run: |
+          if [ -z "$HOOK" ] || [ -z "$RENDER_URL" ]; then
+            echo "::warning title=Render sin configurar::Falta el secreto RENDER_DEPLOY_HOOK_URL o la variable RENDER_URL. No se despliega."
+            echo "listo=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "listo=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Disparar el Deploy Hook con el commit validado
+        if: steps.config.outputs.listo == 'true'
+        run: |
+          echo "inicio=$(date +%s)" >> "$GITHUB_ENV"
+          codigo=$(curl -s -o respuesta.json -w '%{http_code}' -X POST "${HOOK}&ref=${SHA}")
+          if [ "${codigo:0:1}" != 2 ]; then
+            echo "::notice::El hook respondió $codigo con ref; se reintenta sin ref (despliega la punta de main)."
+            codigo=$(curl -s -o respuesta.json -w '%{http_code}' -X POST "$HOOK")
+          fi
+          echo "Deploy Hook: HTTP $codigo"
+          test "${codigo:0:1}" = 2
+
+      - name: Esperar a que producción reporte el commit
+        if: steps.config.outputs.listo == 'true'
+        run: |
+          for i in $(seq 1 60); do
+            commit=$(curl -fsS --max-time 20 "$RENDER_URL/salud" | jq -r .commit || true)
+            echo "intento $i: producción en ${commit:-sin respuesta}"
+            if [ "$commit" = "$SHA" ]; then
+              echo "segundos=$(( $(date +%s) - inicio ))" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Producción no reportó el commit $SHA en 10 minutos."
+          exit 1
+
+      - name: Smoke test en producción
+        if: steps.config.outputs.listo == 'true'
+        run: |
+          curl -fsS "$RENDER_URL/api/resumen" | jq -e '.publicaciones_a55 > 0'
+          curl -fsS "$RENDER_URL/api/publicaciones?limite=1" | jq -e '.total > 0'
+          curl -fsS "$RENDER_URL/" | grep -q "Publicaciones del Galaxy A55"
+
+      - name: Publicar el resumen del despliegue
+        if: steps.config.outputs.listo == 'true'
+        run: |
+          {
+            echo "### Despliegue en Render"
+            echo
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| URL | $RENDER_URL |"
+            echo "| Commit desplegado | \`${SHA:0:7}\` |"
+            echo "| Tiempo hasta estar en línea | ${segundos} s |"
+            echo "| Smoke test | /salud, /api/resumen, /api/publicaciones y / respondieron |"
+          } >> "$GITHUB_STEP_SUMMARY"

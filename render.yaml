@@ -1,0 +1,15 @@
+# Blueprint de Render: la app web de la EA3 como servicio Docker.
+# El despliegue automático de Render está desactivado: solo despliega el workflow
+# deploy-render.yml, y solo con commits de main que ya pasaron CI.
+services:
+  - type: web
+    name: ea3-galaxy-a55
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /salud
+    autoDeploy: false
+    envVars:
+      - key: APP_ENV
+        value: produccion
