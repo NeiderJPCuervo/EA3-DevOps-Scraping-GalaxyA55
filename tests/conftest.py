@@ -20,6 +20,7 @@ SCRAPY_PROYECTO = SCRAPING / "ml_scrapy"
 os.environ.setdefault("EA2_SALIDA", tempfile.mkdtemp(prefix="ea2_pruebas_"))
 for ruta in (SCRAPING, SCRAPY_PROYECTO):
     sys.path.insert(0, str(ruta))
+sys.path.append(str(RAIZ))  # paquete app/ (EA3)
 
 
 def cargar_script(nombre):
