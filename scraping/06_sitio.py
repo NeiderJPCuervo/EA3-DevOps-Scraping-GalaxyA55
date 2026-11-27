@@ -16,7 +16,7 @@ import pandas as pd
 import config
 
 SITE_DIR = Path(os.environ.get("EA2_SITIO", config.BASE_DIR / "site"))
-REPO = os.environ.get("GITHUB_REPOSITORY", "NeiderJPCuervo/EA2-DevOps-Scraping-GalaxyA55")
+REPO = os.environ.get("GITHUB_REPOSITORY", "NeiderJPCuervo/EA3-DevOps-Scraping-GalaxyA55")
 FIGURAS = [
     ("fig1_histograma_precios.png", "Distribución del precio actual"),
     ("fig2_precio_por_condicion.png", "Precio según la condición del equipo"),
@@ -74,7 +74,9 @@ def fecha_captura(resumen):
     return selenium.get("fecha", "")[:10]
 
 
-def construir(resumen, tel):
+def construir(resumen, tel, origen=None):
+    """HTML del tablero. `origen` (HTML) reemplaza la línea de procedencia del pie: la app web
+    lo usa para mostrar el commit desplegado en Render en vez del build de GitHub Actions."""
     medianas = {c["condicion"]: c for c in resumen["por_condicion"]}
     tarjetas = [
         kpi(resumen["publicaciones_totales"], "publicaciones extraídas"),
@@ -104,13 +106,14 @@ def construir(resumen, tel):
             f"{html.escape(p['titulo'])}</a></td><td><span class='chip'>{html.escape(p['condicion'])}</span></td>"
             f"<td class='num'>{cap}</td><td class='num'>{cop(p['precio_actual'])}</td><td>{envio}</td></tr>")
 
-    sha = os.environ.get("GITHUB_SHA", "")
-    ejecucion = os.environ.get("GITHUB_RUN_ID")
-    origen = (f'commit <a href="https://github.com/{REPO}/commit/{sha}"><code>{sha[:7]}</code></a>'
-              if sha else "compilación local")
-    if ejecucion:
-        origen += (f' · <a href="https://github.com/{REPO}/actions/runs/{ejecucion}">'
-                   f'ejecución n.º {os.environ.get("GITHUB_RUN_NUMBER", "")}</a>')
+    if origen is None:
+        sha = os.environ.get("GITHUB_SHA", "")
+        ejecucion = os.environ.get("GITHUB_RUN_ID")
+        origen = (f'commit <a href="https://github.com/{REPO}/commit/{sha}"><code>{sha[:7]}</code></a>'
+                  if sha else "compilación local")
+        if ejecucion:
+            origen += (f' · <a href="https://github.com/{REPO}/actions/runs/{ejecucion}">'
+                       f'ejecución n.º {os.environ.get("GITHUB_RUN_NUMBER", "")}</a>')
     construido = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     fecha_datos = fecha_captura(resumen)
 
